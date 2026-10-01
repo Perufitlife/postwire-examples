@@ -1,0 +1,280 @@
+{
+  "name": "Schedule social media posts from a Google Sheets content calendar with PostWire",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Run your content calendar from a Google Sheet\nFor social media managers and small teams who plan in a spreadsheet. Write an idea, the networks and a date in a row, mark it ready, and it is scheduled — with a different post written for each network.\n\n### How it works\n1. **Every morning at 8** the workflow reads rows whose status is ready.\n2. **Only future dates** skips rows whose time has passed.\n3. **PostWire** schedules each row. The connections and the text are checked now, so a problem shows up today, not at publishing time.\n4. **Mark row as scheduled** writes the status and the PostWire ID back to the sheet.\n\n### Setup\n1. Install the **PostWire** community node (Settings → Community nodes → `n8n-nodes-postwire`), then create a free account at postwire.io, connect your networks and paste the API key into a **PostWire API** credential.\n2. Create a sheet with the columns idea, networks (for example: linkedin, facebook, bluesky), publish_at (ISO date such as 2026-10-01T09:00:00-05:00), status and postwire_id.\n3. Connect Google Sheets and pick the sheet in both Sheets nodes.\n\n### Customize\nChange the trigger hour, add a Brand Voice, or add an image column and set Media to URL.\n\n*Uses a community node, so it runs on self-hosted n8n.*",
+        "height": 651,
+        "width": 520
+      },
+      "id": "45894f68-60fd-430e-adee-89095201a6b1",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -633,
+        -97
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 1. Rows marked ready\nDaily read of the calendar.",
+        "height": 271,
+        "width": 803,
+        "color": 7
+      },
+      "id": "c052d893-3139-4a35-ac53-800ace7876a4",
+      "name": "Sticky Note 2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -53,
+        -97
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 2. Schedule and write back\nQueued in PostWire; status and ID go back to the row.",
+        "height": 271,
+        "width": 513,
+        "color": 7
+      },
+      "id": "a0841ccc-5d52-48c3-a042-3491a74c2627",
+      "name": "Sticky Note 3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        851,
+        -97
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "9f089160-8281-4000-a4f2-212a9f58682d",
+      "name": "Every morning at 8",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "status",
+              "lookupValue": "ready"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e35378a1-92ba-453e-a1b6-532bed43c45c",
+      "name": "Read rows marked ready",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "68ee74f7-d6af-4016-afe0-f1197aa9177c",
+              "leftValue": "={{ DateTime.fromISO($json.publish_at) > $now }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "787cd97c-b30a-45b2-ac19-e93d54f10255",
+      "name": "Only future dates",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "post",
+        "operation": "schedule",
+        "platforms": "={{ String($json.networks).split(',').map(n => n.trim().toLowerCase()).filter(Boolean) }}",
+        "contentMode": "smart",
+        "prompt": "={{ $json.idea }}",
+        "mediaSource": "none",
+        "runAt": "={{ $json.publish_at }}",
+        "options": {
+          "label": "={{ String($json.idea).slice(0, 60) }}"
+        }
+      },
+      "id": "502ea8b3-cd0f-4067-a649-40654eb70c16",
+      "name": "Schedule the post",
+      "type": "n8n-nodes-postwire.postWire",
+      "typeVersion": 2,
+      "position": [
+        900,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $('Only future dates').item.json.row_number }}",
+            "status": "scheduled",
+            "postwire_id": "={{ $json.id }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "postwire_id",
+              "displayName": "postwire_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "438cd979-41f9-42da-aa62-523adbc49e12",
+      "name": "Mark row as scheduled",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1200,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Every morning at 8": {
+      "main": [
+        [
+          {
+            "node": "Read rows marked ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read rows marked ready": {
+      "main": [
+        [
+          {
+            "node": "Only future dates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Only future dates": {
+      "main": [
+        [
+          {
+            "node": "Schedule the post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule the post": {
+      "main": [
+        [
+          {
+            "node": "Mark row as scheduled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

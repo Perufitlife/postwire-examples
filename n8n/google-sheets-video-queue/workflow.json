@@ -1,0 +1,701 @@
+{
+  "name": "Publish videos from Google Sheets to TikTok, Reels and Shorts with Gemini and PostWire",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Publish videos from a Google Sheets queue\nPost short videos from a Google Sheets queue to TikTok, Instagram Reels and YouTube Shorts, with a caption Gemini writes for each network. A bulk upload queue for creators and agencies who batch-produce videos.\n\n### How it works\n1. **At each posting slot** (10:00 and 18:00) takes the first row marked ready that has a video link.\n2. **Mark the row as publishing** claims it, so it is never picked twice.\n3. **Write captions with Gemini** writes a TikTok hook, an Instagram caption, a YouTube title and description, and LinkedIn and Facebook posts from the row's caption.\n4. **Publish with PostWire** checks the video link first (a Drive or Dropbox share link opens a web page, not the file) and publishes each network with its own text. The row is the idempotency key: a retry never posts twice.\n5. When every network published, the row gets the post links; otherwise the row gets the exact fix and **Gmail** emails you the report.\n\n### Setup\n1. Create a free account at postwire.io, connect your networks and copy your API key. In n8n add a **Header Auth** credential (name `Authorization`, value `Bearer pw_live_…`) and select it in **Publish with PostWire**.\n2. Create a sheet with the columns video_url, caption, title, networks, status, posted_at, links and note. Mark rows ready to queue them; networks defaults to tiktok, instagram, youtube.\n3. Connect Google Sheets and pick the same sheet in the four Sheets nodes.\n4. Add a Google Gemini credential (a free API key from Google AI Studio), connect Gmail and put your address in **Email me the fix**.\n\n### Customize\nChange the slots in the trigger, the tone in the Gemini system message, or add linkedin and facebook in the networks column.",
+        "height": 824,
+        "width": 520
+      },
+      "id": "b79c6323-c236-4051-ab85-1a80ed82b63a",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        -97
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 1. Next video in the queue\nAt each slot, the rows marked ready that have a video link; only the first one goes out.",
+        "height": 271,
+        "width": 1117,
+        "color": 7
+      },
+      "id": "5e8069cd-2f5d-49a3-a27f-e8552feafc75",
+      "name": "Sticky Note 2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -97
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 2. Claim the row, write the captions\nStatus publishing, then one caption per network from Gemini.",
+        "height": 271,
+        "width": 562,
+        "color": 7
+      },
+      "id": "f6014256-5d39-4dba-a3ee-751263e8c09b",
+      "name": "Sticky Note 3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1119,
+        -97
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 3. Publish everywhere\nPostWire checks the link and publishes each network with its own text.",
+        "height": 295,
+        "width": 480,
+        "color": 7
+      },
+      "id": "2bc44e02-1eda-4087-ac3f-bc3e1395e143",
+      "name": "Sticky Note 4",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        431
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 4. Write the result back\nLinks when everything went out; otherwise the fix in the row and an email. Nothing fails silently.",
+        "height": 511,
+        "width": 820,
+        "color": 7
+      },
+      "id": "b65749cc-e349-40c5-a84b-f160b0c5e022",
+      "name": "Sticky Note 5",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        526,
+        335
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 10
+            },
+            {
+              "field": "days",
+              "triggerAtHour": 18
+            }
+          ]
+        }
+      },
+      "id": "1de6f64f-4002-4597-acd3-4465296d80fe",
+      "name": "At each posting slot",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "status",
+              "lookupValue": "ready"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a40c5c33-6431-4b04-a43b-f7831a266d91",
+      "name": "Read the video queue",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f7984b0d-379c-4f33-a20d-7f7b6334e036",
+              "leftValue": "={{ String($json.video_url || '').trim() }}",
+              "rightValue": "http",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e9ec6f91-a487-48bb-a1e6-477ca02cba5a",
+      "name": "Only rows with a video link",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "maxItems": 1
+      },
+      "id": "a45307d3-8075-4659-abaf-2e20d7db8f62",
+      "name": "Take the next video",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        900,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $json.row_number }}",
+            "status": "publishing"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "1bbc26fa-bbc6-43eb-a1e8-f3605bb95f53",
+      "name": "Mark the row as publishing",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ 'Video caption: ' + $('Take the next video').item.json.caption + '\\nNetworks: ' + ($('Take the next video').item.json.networks || 'tiktok, instagram, youtube') }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {
+          "systemMessage": "You write social media captions for a short vertical video. Keep every fact from the caption and invent nothing. Return JSON with the keys tiktok (a hook of up to 150 characters with 3 hashtags), instagram (2 sentences and up to 5 hashtags), youtube_title (a searchable title of up to 90 characters), youtube (a 2-sentence description), linkedin (3 short paragraphs, professional, no hashtags) and facebook (1 or 2 conversational sentences)."
+        }
+      },
+      "id": "2ba6d7ee-c77d-42b4-a1ea-8f4a7472f1e2",
+      "name": "Write captions with Gemini",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        1500,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8de2d48a-b0c6-4daf-ac1c-7fe2b00bd2a8",
+              "name": "video_url",
+              "value": "={{ String($('Take the next video').item.json.video_url).trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "9c331b18-9c82-43f5-aca9-7bba3e0745d4",
+              "name": "caption",
+              "value": "={{ $('Take the next video').item.json.caption }}",
+              "type": "string"
+            },
+            {
+              "id": "34ae8a72-0601-4de0-a9e5-7197eda0e8d1",
+              "name": "captions",
+              "value": "={{ JSON.parse($('Write captions with Gemini').item.json.content.parts.map(p => p.text || '').join('')) }}",
+              "type": "object"
+            },
+            {
+              "id": "7dc177ec-4ac8-4bf8-a4b2-1ba1d9c3aeeb",
+              "name": "title",
+              "value": "={{ $('Take the next video').item.json.title || String($('Take the next video').item.json.caption || '').split('\\n')[0].slice(0, 90) }}",
+              "type": "string"
+            },
+            {
+              "id": "c3c36558-ce1e-40e9-a9cc-499a0e5dbea8",
+              "name": "networks",
+              "value": "={{ String($('Take the next video').item.json.networks || 'tiktok, instagram, youtube').split(',').map(n => n.trim().toLowerCase()).filter(Boolean) }}",
+              "type": "array"
+            },
+            {
+              "id": "d262be7a-cc71-4c69-a742-f54a1144cdd4",
+              "name": "row_number",
+              "value": "={{ $('Take the next video').item.json.row_number }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8050bf62-3a46-4bc6-ad6c-40e9247a2801",
+      "name": "Build the post",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        552
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://postwire.io/api/post",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ platforms: $json.networks, text: $json.caption, title: $json.captions.youtube_title || $json.title, video_url: $json.video_url, per_platform: Object.fromEntries($json.networks.map(n => [n, n === 'youtube' ? { text: $json.captions.youtube || $json.caption, title: $json.captions.youtube_title || $json.title } : { text: $json.captions[n] || $json.caption }])), idempotency_key: ('sheet-row-' + $json.row_number + '-' + $json.video_url).slice(0, 200) }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "2e7ceda5-e2d7-4ae5-a75f-747d4f9a8f82",
+      "name": "Publish with PostWire",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        300,
+        552
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f19f87ec-7875-4395-a12d-ab21b897f89f",
+              "leftValue": "={{ ($json.results || []).length > 0 && $json.results.every(r => r.ok) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9879e7c5-61b3-4ff9-aca9-b30a1a5a712c",
+      "name": "Every network published?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        600,
+        552
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $('Build the post').item.json.row_number }}",
+            "status": "posted",
+            "posted_at": "={{ $now.toISO() }}",
+            "links": "={{ ($json.results || []).filter(r => r.ok).map(r => r.platform + ' ' + (r.url || '')).join(' | ') }}",
+            "note": ""
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "posted_at",
+              "displayName": "posted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "links",
+              "displayName": "links",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "note",
+              "displayName": "note",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "7b6eba6a-fdbc-4f62-adb9-c50b7fdd0bb0",
+      "name": "Mark the row as posted",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        900,
+        431.99999999999994
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $('Build the post').item.json.row_number }}",
+            "status": "={{ ($json.posted || 0) > 0 ? 'partly posted' : 'needs fix' }}",
+            "posted_at": "={{ $now.toISO() }}",
+            "links": "={{ ($json.results || []).filter(r => r.ok).map(r => r.platform + ' ' + (r.url || '')).join(' | ') }}",
+            "note": "={{ $json.error ? $json.error : ($json.results || []).filter(r => !r.ok).map(r => r.platform + ': ' + (r.fix || r.error)).join(' | ') }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "posted_at",
+              "displayName": "posted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "links",
+              "displayName": "links",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "note",
+              "displayName": "note",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "a602e94e-3a6f-4bb0-a5da-bb5d19a8eaa8",
+      "name": "Write the fix in the row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        900,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "you@example.com",
+        "subject": "={{ 'Video in row ' + $('Build the post').item.json.row_number + ' was not published everywhere' }}",
+        "emailType": "text",
+        "message": "={{ (() => { const r = $('Publish with PostWire').item.json; return r.error ? r.error : (r.results || []).map(x => (x.ok ? 'Published  ' : 'NOT published  ') + x.platform + (x.url ? '  ' + x.url : '') + (x.ok ? '' : '\\n    ' + (x.fix || x.error))).join('\\n'); })() }}",
+        "options": {}
+      },
+      "id": "3f200b4b-9258-4883-a741-b297eefe28c5",
+      "name": "Email me the fix",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1200,
+        672
+      ]
+    }
+  ],
+  "connections": {
+    "At each posting slot": {
+      "main": [
+        [
+          {
+            "node": "Read the video queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read the video queue": {
+      "main": [
+        [
+          {
+            "node": "Only rows with a video link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Only rows with a video link": {
+      "main": [
+        [
+          {
+            "node": "Take the next video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Take the next video": {
+      "main": [
+        [
+          {
+            "node": "Mark the row as publishing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark the row as publishing": {
+      "main": [
+        [
+          {
+            "node": "Write captions with Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write captions with Gemini": {
+      "main": [
+        [
+          {
+            "node": "Build the post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build the post": {
+      "main": [
+        [
+          {
+            "node": "Publish with PostWire",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish with PostWire": {
+      "main": [
+        [
+          {
+            "node": "Every network published?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every network published?": {
+      "main": [
+        [
+          {
+            "node": "Mark the row as posted",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Write the fix in the row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write the fix in the row": {
+      "main": [
+        [
+          {
+            "node": "Email me the fix",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

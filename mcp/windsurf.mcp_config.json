@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "postwire": {
+      "serverUrl": "https://postwire.io/api/mcp",
+      "headers": {
+        "Authorization": "Bearer pw_live_your_key"
+      }
+    }
+  }
+}

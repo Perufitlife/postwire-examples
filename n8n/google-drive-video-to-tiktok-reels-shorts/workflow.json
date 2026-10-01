@@ -1,0 +1,276 @@
+{
+  "name": "Post Google Drive videos to TikTok, Instagram Reels and YouTube Shorts with PostWire",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Drop a video in Google Drive, get it on TikTok, Reels and Shorts\nFor creators and brands who edit short videos and hate uploading the same file three times. Drop a vertical video in a Drive folder: it is published to TikTok, Instagram Reels and YouTube Shorts with a caption written for each (and a YouTube title and tags).\n\n### How it works\n1. **Google Drive Trigger** watches a folder for new files.\n2. **Only video files** skips anything that is not a video.\n3. **Download the video** fetches the file. A Drive share link would not work — it opens a web page, not the file.\n4. **PostWire** uploads the video, writes the captions from the file name or description, and publishes. PostWire already holds the TikTok, Meta and YouTube approvals, so there is no app review on your side.\n5. **Any network failed?** emails you the network, the reason and the fix.\n\n### Setup\n1. Install the **PostWire** community node (Settings → Community nodes → `n8n-nodes-postwire`), then create a free account at postwire.io, connect your networks and paste the API key into a **PostWire API** credential.\n2. Connect Google Drive and pick the folder. Name files after what the video says, or fill the Drive description.\n3. Connect Gmail and set your address. Videos up to 50 MB; H.264 MP4, 9:16.\n\n### Customize\nAdd Facebook Reels, set Visibility in Options, or add a Brand Voice.\n\n*Uses a community node, so it runs on self-hosted n8n.*",
+        "height": 722,
+        "width": 520
+      },
+      "id": "79fd7db7-2f13-46a3-a777-4e4ee8862564",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -636,
+        -217
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 1. New video\nWatched folder, videos only, downloaded as a file.",
+        "height": 271,
+        "width": 810,
+        "color": 7
+      },
+      "id": "622277e3-c34a-44c4-a18e-e621d328beed",
+      "name": "Sticky Note 2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -56,
+        -97
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 2. Publish, email me if it failed\nUploaded and captioned per network; failures arrive with the fix.",
+        "height": 391,
+        "width": 859,
+        "color": 7
+      },
+      "id": "f4e885fe-283c-4655-a8e3-22b93bb61570",
+      "name": "Sticky Note 3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        788,
+        -217
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "0e0cad93-c82a-4e1b-a589-cf939de2070f",
+      "name": "New video in folder",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9e8adf58-ef5b-4781-a490-a4fe0cfaacd8",
+              "leftValue": "={{ $json.mimeType }}",
+              "rightValue": "video/",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "cdf3f608-f903-4ca7-aa4c-8b0246975384",
+      "name": "Only video files",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.id }}"
+        },
+        "options": {}
+      },
+      "id": "42267e7f-5c7f-48a1-a1b1-e044f14fd2d0",
+      "name": "Download the video",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "post",
+        "operation": "publish",
+        "platforms": [
+          "tiktok",
+          "instagram",
+          "youtube"
+        ],
+        "contentMode": "smart",
+        "prompt": "={{ $('Only video files').item.json.description || $('Only video files').item.json.name.replace(/\\.[^.]+$/, '').replace(/[-_]+/g, ' ') }}",
+        "mediaSource": "binary",
+        "binaryPropertyName": "data",
+        "options": {
+          "mediaType": "video",
+          "privacy": "public"
+        }
+      },
+      "id": "0a2b46ab-6074-4748-a8c5-dfba52142645",
+      "name": "Publish to TikTok, Reels and Shorts",
+      "type": "n8n-nodes-postwire.postWire",
+      "typeVersion": 2,
+      "position": [
+        900,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2e5f2917-a754-4ae6-a15d-67b4d0da7592",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4faad6bd-47d3-4feb-a3ec-ee194b657760",
+      "name": "Any network failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "you@example.com",
+        "subject": "={{ $json.platform }} did not publish {{ $('Only video files').item.json.name }}",
+        "emailType": "text",
+        "message": "={{ $json.error }}\n\nHow to fix it: {{ $json.hint || 'check the connection in PostWire' }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "a9d5518b-071b-4efd-add9-b0dec3c7ac2b",
+      "name": "Email me the fix",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1500,
+        -120
+      ]
+    }
+  ],
+  "connections": {
+    "New video in folder": {
+      "main": [
+        [
+          {
+            "node": "Only video files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Only video files": {
+      "main": [
+        [
+          {
+            "node": "Download the video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download the video": {
+      "main": [
+        [
+          {
+            "node": "Publish to TikTok, Reels and Shorts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish to TikTok, Reels and Shorts": {
+      "main": [
+        [
+          {
+            "node": "Any network failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any network failed?": {
+      "main": [
+        [
+          {
+            "node": "Email me the fix",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

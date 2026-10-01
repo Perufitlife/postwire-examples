@@ -1,0 +1,8 @@
+{
+  "platforms": ["tiktok", "instagram", "youtube"],
+  "video_url": "{{1.video_url}}",
+  "text": "{{1.caption}}",
+  "title": "{{1.title}}",
+  "privacy": "public",
+  "idempotency_key": "{{1.id}}"
+}

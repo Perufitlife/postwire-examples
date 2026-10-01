@@ -1,0 +1,217 @@
+{
+  "name": "Publish to social media from any app with a webhook and PostWire",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## A social publishing endpoint for any app\nFor developers and no-code builders who want one URL that publishes to every network — from a CRM, a form tool, Zapier, a script or a button. Send an idea and a list of networks; get back what was published where.\n\n### How it works\n1. **Webhook** receives a POST with JSON: { \"idea\": \"...\", \"networks\": [\"linkedin\",\"bluesky\"], \"id\": \"optional-unique-id\" }.\n2. **Valid request?** checks the idea and networks are there; if not, it answers 400 with what to send.\n3. **PostWire** writes a native post per network and publishes it. Send an id to make retries safe: the same id never posts twice.\n4. **Return the results** answers with one entry per network: ok, url, and a hint if it failed.\n\n### Setup\n1. Install the **PostWire** community node (Settings → Community nodes → `n8n-nodes-postwire`), then create a free account at postwire.io, connect your networks and paste the API key into a **PostWire API** credential.\n2. Add a Header Auth credential to the Webhook so only your apps can call it.\n3. Activate the workflow and call the production URL.\n\n### Customize\nAccept media_url in the body and set Media to URL, or switch to Schedule and accept a date.\n\n*Uses a community node, so it runs on self-hosted n8n.*",
+        "height": 672,
+        "width": 520
+      },
+      "id": "4e3fed51-05ee-491e-aa23-bf3154ef165b",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -647,
+        -217
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 1. Request\nPOST with idea and networks.",
+        "height": 271,
+        "width": 507,
+        "color": 7
+      },
+      "id": "3c9bff55-1e01-44d6-a314-8dac07c0a4ce",
+      "name": "Sticky Note 2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -67,
+        -97
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 2. Publish and answer\nResults per network, or a 400 that says what to send.",
+        "height": 535,
+        "width": 534,
+        "color": 7
+      },
+      "id": "c4b81579-299e-4aa0-a457-70be9619861c",
+      "name": "Sticky Note 3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        519,
+        -217
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "postwire-publish",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "56a57b97-73e6-40c4-a3b4-9322140ba03c",
+      "name": "Receive a post request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "67245dc0-3a34-4e6b-ae39-939f971092fc"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "08ea3f2e-3c65-49ff-a8df-fbf83c2a93b3",
+              "leftValue": "={{ $json.body.idea }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "43461cbe-bda3-468e-a2b2-637b3f9e4cce",
+              "leftValue": "={{ $json.body.networks }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7858bc4d-d5a3-48be-a45e-fb738975a663",
+      "name": "Valid request?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "post",
+        "operation": "publish",
+        "platforms": "={{ $json.body.networks }}",
+        "contentMode": "smart",
+        "prompt": "={{ $json.body.idea }}",
+        "mediaSource": "none",
+        "options": {
+          "idempotencyKey": "={{ $json.body.id || '' }}"
+        }
+      },
+      "id": "215a850e-1fc2-4551-acda-ff8cc6dacde9",
+      "name": "Publish a post per network",
+      "type": "n8n-nodes-postwire.postWire",
+      "typeVersion": 2,
+      "position": [
+        600,
+        -120
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "be855afa-e057-4bf8-a1cd-5ecf4406ca0f",
+      "name": "Return the results",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        900,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"error\": \"Send JSON with idea (text) and networks (array), e.g. {\\\"idea\\\":\\\"...\\\",\\\"networks\\\":[\\\"linkedin\\\",\\\"bluesky\\\"]}\" } }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "7ac87020-c146-4d61-a82b-e2e69bf520ab",
+      "name": "Reject the request",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        900,
+        144
+      ]
+    }
+  ],
+  "connections": {
+    "Receive a post request": {
+      "main": [
+        [
+          {
+            "node": "Valid request?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid request?": {
+      "main": [
+        [
+          {
+            "node": "Publish a post per network",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject the request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish a post per network": {
+      "main": [
+        [
+          {
+            "node": "Return the results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

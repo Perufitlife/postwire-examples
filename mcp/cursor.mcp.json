@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "postwire": {
+      "command": "npx",
+      "args": ["-y", "postwire-mcp"],
+      "env": {
+        "POSTWIRE_API_KEY": "pw_live_your_key"
+      }
+    }
+  }
+}

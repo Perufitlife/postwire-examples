@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "postwire": {
+      "type": "http",
+      "url": "https://postwire.io/api/mcp"
+    }
+  }
+}
